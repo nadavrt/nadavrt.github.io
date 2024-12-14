@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<link rel="icon" href="../../../favicon.ico" type="image/x-icon">
+	<title>The succinct Wordpress Getter method and how it works</title>
+	<link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet">
+	<!-- Add SyntaxHighlighter -->
+	<link href="../../../inc/sh/css/shCore.css" rel="stylesheet" type="text/css" />
+	<link href="../../../inc/sh/css/shCoreDefault.css" rel="stylesheet" type="text/css" />
+	<script src="../../../inc/sh/js/shCore.js"></script>
+	<script src="../../../inc/sh/js/shBrushPhp.js"></script>
+	<script type="text/javascript">SyntaxHighlighter.all();</script>
+	<!-- Add SyntaxHighlighter -->
+	<link href="../../../css/code-article.css" rel="stylesheet" type="text/css" />
+</head>
+<body>
+	<div class="content">
+		<div class="content-banner">
+			<ol class="content-banner__content-breadcrumb topic-code">
+				<li><a href="http://nadavr.com">Nadav Rotchild</a></li>
+				<li><a href="http://nadavr.com/articles/">Articles</a></li>
+				<li><a href="http://nadavr.com/articles/code/">Code</a></li>
+				<li><a href="#">Wordpress</a></li>
+			</ol>
+			<h1>The succinct Wordpress Getter method and how it works</h1>
+		</div>
+		<article>
+			<p>If you code for Wordpress on a daily basis you're probably quite familiar with post meta fields and the almighty <code>get_post_meta</code> 
+			function that is used to retrieve them. In case you need a quick refresher <a href="https://developer.wordpress.org/reference/functions/get_post_meta/">these 
+			are the function's documentations</a>. Today I'll be writing about the global post's Getter method. Taking advantage of this method will
+			allow you to change your meta data retrieval syntax from this:
+			<pre class="brush: php; gutter: false; toolbar: false;">get_post_meta( $post_id, 'customText', TRUE )</pre>
+			To this:
+			<pre class="brush: php; gutter: false; toolbar: false;">$post->customText</pre>
+			</p>
+			<p><h2>Introducing the Getter method</h2></p>
+			<p>The Getter method was introduced to the WP_Post class in version 3.5 as part of <a href="https://core.trac.wordpress.org/changeset/21559">revision 21559</a>
+			and in its current incarnation is living happily inside class-wp-post.php. It takes advantage of the fact that WP_POST is a class and utilizes the magic 
+			method __get to address inaccessible properties in the WP_POST class as meta field keys. The Getter method then tries to retrieve the value of those post meta keys.
+			Here's how the entire process looks:</p>
+<pre class="brush: php; toolbar: false;">
+ /*
+ * Getter.
+ *
+ * @param string $key Key to get.
+ * @return mixed
+ */
+public function __get( $key ) {
+	if ( 'page_template' == $key && $this->__isset( $key ) ) {
+		return get_post_meta( $this->ID, '_wp_page_template', true );
+	}
+
+	if ( 'post_category' == $key ) {
+		if ( is_object_in_taxonomy( $this->post_type, 'category' ) )
+			$terms = get_the_terms( $this, 'category' );
+
+		if ( empty( $terms ) )
+			return array();
+
+		return wp_list_pluck( $terms, 'term_id' );
+	}
+
+	if ( 'tags_input' == $key ) {
+		if ( is_object_in_taxonomy( $this->post_type, 'post_tag' ) )
+			$terms = get_the_terms( $this, 'post_tag' );
+
+		if ( empty( $terms ) )
+			return array();
+
+		return wp_list_pluck( $terms, 'name' );
+	}
+
+	// Rest of the values need filtering.
+	if ( 'ancestors' == $key )
+		$value = get_post_ancestors( $this );
+	else
+		$value = get_post_meta( $this->ID, $key, true );
+
+	if ( $this->filter )
+		$value = sanitize_post_field( $key, $value, $this->ID, $this->filter );
+
+	return $value;
+}
+</pre>
+<p>As you can see from the source code, when presented with a meta key the Getter 
+method will ultimately call the <code>get_post_meta</code> function, which is exactly what we want. 
+Using the Getter method to retrieve post meta data does require you to rely on the global <code>$post</code> (and that variable must exist or
+be declared before calling it). But if you've been using <code>get_the_id()</code> religiously to retrieve the post ID you should know that that function
+references to the global <code>$post</code> anyway, and will return boolean <code>FALSE</code> if that variable doesn't exist.
+
+<p><h2>Pros and cons</h2></p>
+<p>The advantage of using the Getter method is obvious. Semantically it enables you to write succinct code that has less clutter and thus is easier to understand. 
+There is however another, more subtle, advantage to using this method over our old companion <code>get_post_meta()</code>. Since you must refer to the Getter
+method via the global <code>$post</code> object it restricts your input and allows you to only pass string-type values to the __get magic method.
+A case that demonstrates the usefulness of this strictness is when someone tries to pass a falsy value as the meta key. Did you know that if the 
+value of the <code>$key</code> parameter is falsy the <code>get_post_meta will</code> function will return the entire post meta array, even if 
+<code>$single</code> is set to true?
+</p>
+<pre class="brush: php; toolbar: false;">
+get_post_meta( $post_id, FALSE, TRUE); //Returns all the post meta fields as an array.
+get_post_meta( $post_id, '0', TRUE); //Will also return all the post meta fields as an array.
+</pre>
+
+<p>The Getter method on the other hand will always parse text into a string and will not accept numeric values, thus preventing such erroneous data from being returned.</p>
+
+<pre class="brush: php; toolbar: false;">
+$post->false; //Returns the value of the meta key false.
+$post->'0' //Will generate a PHP parse syntax error.
+</pre>
+
+<p>It is still possible to pass the Getter method boolean values by using variable variables when needed.</p>
+
+<p>Now let's go over this method one shortcoming - the Getter method strictly returns a single value. This can be observed on line 36 above:</p>
+<pre class="brush: php; gutter: false; toolbar: false;">$value = get_post_meta( $this->ID, $key, true );</pre>
+<p>Since the boolean value of the <code>$single</code> parameter is always set to <code>TRUE</code>. 
+This can prevent multidimensional arrays from being retrieved correctly. To demonstrate this issue let's create a multidimensional array
+and then try to retrieve it.
+<pre class="brush: php; toolbar: false;">
+//For this example we'll assume we have the following meta data structure inside a mata key called information.
+$information = array(
+	array(
+		'name' => 'Johny Boy',
+		'phone' => '999999'
+	),
+	array(
+		'name' => 'Mason Hulk',
+		'phone' => '8181123'
+	),
+);
+
+//Now let's attempt to retrieve the value of the key using the two possible methods.
+var_dump( get_post_meta(get_the_ID(), 'information', FALSE) );
+
+//Result:
+//array(2) {
+//  [0]=>
+//  array(2) {
+//    ["name"]=>
+//    string(11) "Johny Boy"
+//    ["phone"]=>
+//    string(6) "999999"
+//  }
+//  [1]=>
+//  array(2) {
+//    ["name"]=> 
+//    string(10) "Mason Hulk"
+//    ["phone"]=>
+//    string(7) "8181123"
+//  }
+//}
+
+var_dump( $post->information );
+
+//result:
+//string(5) "Array"
+</pre>
+
+<p>Overall it is clear that the Getter function is a useful addition to our Wordpress-coding arsenal. Its succinct and simple syntax means it helps
+code stay small and legible while providing almost the same functionality as the more senior <code>get_post_meta()</code> function.
+		</article>
+	</div>
+</body>
+</html>

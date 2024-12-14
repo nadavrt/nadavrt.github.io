@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Template</title>
+	<style>
+		* {
+		    box-sizing: border-box;
+		}
+
+		body{
+			margin: 0;
+		    padding: 0;
+		    width: 100%;
+		    min-height: 100vh;
+		    display: -webkit-box;
+		    display: -webkit-flex;
+		    display: -ms-flexbox;
+		    display: flex;
+		    -webkit-box-orient: vertical;
+		    -webkit-box-direction: normal;
+		    -webkit-flex-direction: column;
+		    -ms-flex-direction: column;
+		    flex-direction: column;
+		    font: normal 16px/26px "Roboto", Arial, sans-serif;
+		    background: #ebebeb;
+		}
+		.content{ 
+			margin: 45px auto;
+			width: 100%;
+			max-width: 1290px;
+		    display: block;
+		    padding-bottom: 10px;
+		}
+		.content:after {
+		    content: "";
+		    display: table;
+		    clear: both;
+		}
+		
+		.content-banner{ 
+			font: normal 16px/26px "Roboto", Arial, sans-serif;
+		    color: #2a3744;
+		    text-rendering: optimizeLegibility;
+		    -webkit-font-smoothing: antialiased;
+		    margin: 0;
+		    padding: 0;
+		}
+		.content-banner__icon, .content-banner__body{ display: table-cell; }
+
+		.content-banner__content-breadcrumb {
+		    margin-top: 0;
+		    margin-bottom: 10px;
+		    list-style: none;
+		    padding-left: 0;
+		    overflow: hidden;
+		    text-transform: uppercase;
+		}
+		.content-banner__content-breadcrumb li {
+		    float: left;
+		    display: inline-block;
+		}
+
+		.content-banner__content-breadcrumb li+li:before {
+		    padding-left: 10px;
+		    padding-right: 5px;
+		    content: ">";
+		    color: #a6a6a6;
+		}
+		.content-banner__content-breadcrumb.topic-code a {
+		    color: #4cc1be;
+		    text-decoration: none;
+		    outline: none;
+		    border: none;
+		}
+		article{
+			font-style: normal;
+		    font-size: 18px;
+		    line-height: 1.6em;
+		    color: #3a3a3a;
+		    margin: 0 0 40px 0;
+		}
+		article p{
+			text-indent: 0;
+    		margin: 0 0 26px 0;
+		}
+	</style>
+</head>
+<body>
+	<div class="content">
+		<div class="content-banner">
+			<ol class="content-banner__content-breadcrumb topic-code">
+				<li><a href="https://code.tutsplus.com/tutorials">Code</a></li>
+				<li><a href="https://code.tutsplus.com/categories/php">PHP</a></li>
+			</ol>
+			<h1></h1>
+		</div>
+		<article>
+			<p></p>
+		</article>
+	</div>
+</body>
+</html>

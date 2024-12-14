@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<link rel="icon" href="../../../favicon.ico" type="image/x-icon">
+	<title>How to create your own Wordpress Ajax handler</title>
+	<link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet">
+	<!-- Add SyntaxHighlighter -->
+	<link href="../../../inc/sh/css/shCore.css" rel="stylesheet" type="text/css" />
+	<link href="../../../inc/sh/css/shCoreDefault.css" rel="stylesheet" type="text/css" />
+	<script src="../../../inc/sh/js/shCore.js"></script>
+	<script src="../../../inc/sh/js/shBrushPhp.js"></script>
+	<script type="text/javascript">SyntaxHighlighter.all();</script>
+	<!-- Add SyntaxHighlighter -->
+	<link href="../../../css/code-article.css" rel="stylesheet" type="text/css" />
+</head>
+<body>
+	<div class="content">
+		<div class="content-banner">
+			<ol class="content-banner__content-breadcrumb topic-code">
+				<li><a href="http://nadavr.com">Nadav Rotchild</a></li>
+				<li><a href="http://nadavr.com/articles/">Articles</a></li>
+				<li><a href="http://nadavr.com/articles/code/">Code</a></li>
+				<li><a href="#">Wordpress</a></li>
+			</ol>
+			<h1>How to create your own Wordpress Ajax handler</h1>
+		</div>
+		<article>
+<p>If Wordpress is your CMS of choice you've probably gotten used to logging into the your admin panel via the wp-admin directory. 
+Being part of the back-end of your website, the wp-admin directory should not be accessible to users who casually browse your website. 
+In fact, many companies limit access to that directory by IP to prevent just that. And yet Wordpress' own Ajax handler 
+(admin-ajax.php) resides in that same directory. So whenever an Ajax call is made in response to a user viewing and or using a feature on a page
+your wp-admin directory is accessed. If you consider that practise to be unhealthy know that Wordpress' own Ajax handler is optional for front-end use. 
+In fact, admin-ajax.php should only be used for back-end admin and API related Ajax calls.<br/>
+This tutorial will walk you through creating your own Ajax hanlder, which you can place in your theme or plugin directory, depending on your need.<br/>
+</p>
+
+<p>
+The advantages of creating your own Wordpress Ajax hanlder are numerous. They include:
+<ul>
+	<li>Less clutter - each time admin-ajax.php is refered to an impressive array of admin-related functions and features is loaded.
+	These functions are irrelevant for the front-end. By not loading all of this clutter our Ajax handler will become more efficient.</li>
+	<li>Directory masking - the Ajax handler will be situated in the theme/plugin directory instead of the wp-admin directory. 
+	This abolishes the need to grant access to the wp-admin directory and thus prevent a resource from being loaded from it.</li>
+	<li>Dedicated call handling - a dedicated Ajax handler for your plugin makes it independent of the inate Wordpress Ajax 
+	handler, thus separating it from the Wordpress core. This is a good development practise, as well as a safeguard.</li>
+	<li>Better security - You can filter and validate functions before performing an ajax call.</li>
+	<li>Specify a custom return value - admin-ajax.php uses <code>die('0');</code> as it's default return value but your Ajax handler can specify it's own unique return value. 
+	This is especially helpful if your plugin or application requires specific responses.</li>
+</ul>
+</p>
+
+<h2>Setting Up the Handler</h2>
+<p>Let us create a new Ajax handler for our theme. First create a new file called ajax.php inside your theme directory 
+and paste the following code inside it:
+<pre class="brush: php; toolbar: false;">
+	define('DOING_AJAX', TRUE);
+	if ( !isset($_POST['action']) ) die(FALSE);
+
+	require_once('../../../wp-load.php');
+	@header( 'Content-Type: text/html; charset=' . get_option( 'blog_charset' ) );
+	@header( 'X-Robots-Tag: noindex' );
+	send_nosniff_header();
+	header('Cache-Control: no-cache');
+	header('Pragma: no-cache');
+	$allowedActions = array(
+		'my_function',
+		'another_function'
+	);
+	$action = $_POST['action'];
+
+	if ( in_array($action, $allowedActions) )
+	{
+		if ( is_user_logged_in() ) do_action( 'wp_ajax_' . $action );
+		else do_action( 'wp_ajax_nopriv_' . $action );
+	}
+	else die(FALSE);
+</pre>
+<p>Our very own Ajax handler is compact and reletively simple. It only loads the bare minimum required to perform an Ajax call. In fact,
+we stripped it of the many admin-related functions admin-ajax.php offers, because they are not needed for a front-end handler. 
+Also note how we limit this Ajax handler to the functions specified in the <code>$allowedActions</code> array. 
+admin-ajax.php is programmed to be gready - if a proper Ajax function exists with the same name as the passed action that function will be accessed. 
+Our custom Ajax handler prevents this potential security pitfall by restricting the actions it can take to our predefined array.
+Most importantly, our Ajax handler lives in the themes directory together with the rest of the content a front-end user is allowed to see.
+</p>
+
+<h2>A specialized handler</h2>
+<p>Since you choose which files/plugins interact with your tailor-made handler it can be specialized in a way admin-ajax.php could never be.
+Here is a proof of concept that shows just how special your ajax handler can be:
+<pre class="brush: php; toolbar: false;">
+	//Our Ajax handler has a default action, so the $_POST['action'] existence check has been removed.
+	define('DOING_AJAX', TRUE);
+	require_once('../../../wp-load.php');
+	@header( 'Content-Type: text/html; charset=' . get_option( 'blog_charset' ) );
+	@header( 'X-Robots-Tag: noindex' );
+	send_nosniff_header();
+	header('Cache-Control: no-cache');
+	header('Pragma: no-cache');
+	$allowedActions = array(
+		'my_function',
+		'another_function'
+	);
+
+	//Let's add a default action.
+	$action = (isset($_POST['action']))? $_POST['action']:'my_function';
+	$action = (in_array($action, $allowedActions))? $action:'my_function';
+	
+	//This handler will only handle my plugin calls so the function prefix can adhere to the plugin. 
+	//I also don't need to enable any admin privileges so both logged in and logged out users can use the same prefix.
+	do_action( 'myPlugin_' . $action );
+</pre>
+
+<h2>A Word of Caution</h2>
+<p>The handler we created is great for frontend use, but is not a replacement for admin-ajax.php. Our handler is nimble because important
+back-end features such as the Administration API and other Wordpress-core related POST actions have been intentionally stripped from it. 
+If your plugin/feature makes Ajax calls from within the admin panel admin-ajax.php is your best choice. admin-ajax.php was created for handling admin-specific 
+tasks and is a resource that Wordpress itself loads on every admin page for its core features (such as editing, saving and updating of posts and menus).
+		</article>
+	</div>
+</body>
+</html>
