@@ -10,14 +10,14 @@
 			if ( input )
 			{
 				//Check the input type and proceed accordingly.
-				if ( $(input).attr('name') == 'email' ) formValidator.validateEmail(input);
+				if ( $(input).attr('id') == 'email' ) formValidator.validateEmail(input);
 				else formValidator.validateRegularField(input);
 			}
 			else
 			{
-				formValidator.validateRegularField( $('.contact-form input[name="name"]') );
+				formValidator.validateRegularField( $('.contact-form input[id="name"]') );
 				formValidator.validateRegularField( $('.contact-form textarea') );
-				formValidator.validateEmail( $('.contact-form input[name="email"]') );
+				formValidator.validateEmail( $('.contact-form input[id="email"]') );
 			}
 		},
 
@@ -79,35 +79,22 @@
 			if ( formValidator.error ) return false;
 			$('.contact-form input[type="submit"]').val('sending...').attr('disabled', 'disabled');
 
-			const url = 'https://docs.google.com/forms/d/e/${https://docs.google.com/forms/u/0/d/e/1FAIpQLSeeRpbMz1UIyQx4gWowviwGhUY4ynZOkQY9SSErGL-Z_WkUKg/formResponse';
+			const url = 'https://docs.google.com/forms/u/0/d/e/1FAIpQLSeeRpbMz1UIyQx4gWowviwGhUY4ynZOkQY9SSErGL-Z_WkUKg/formResponse';
 			const params = new URLSearchParams({
 				"entry.1017880708": this.name.value,
 				"entry.633732075": this.email.value,
 				"entry.200786538": this.message.value,
 			}).toString();
 
-			fetch(`${url}?${params}`, { method: "GET" })
-				.then(response => console.log("Form submitted!", response))
-				.catch(error => console.error("Error submitting form:", error));
-			
-			// $.ajax({
-			//       url: `${url}?${params}`,
-			//       type: "GET",
-			//       contentType: false,
-			//       cache: false,
-			//       processData:false,        // To send DOMDocument or non processed data files this is set to false
-			//       success: function(response)
-			//       {
-			//       	$('#contact-form > .row').remove();
-			//         if ( response === 'success' ) $('#contact-form').append('<p>Your message has been sent successfully. Thank you for contacting me.</p>');
-			//         else $('#contact-form').append('<p>An error has occured while trying to process your message. Please reload the page and try again.</p>');
-			//       },
-			//       error: function()
-			//       {
-			//       	$('#contact-form > .row').remove();
-			//       	$('#contact-form').append('<p>An error has occured while trying to process your message. Please reload the page and try again.</p>');
-			//       }
-			//     }); //End of Ajax call.
+			fetch(`${url}?${params}`, { method: "GET", mode: 'no-cors' })
+				.then(response => {
+					$('#contact-form > .row').remove();
+			        $('#contact-form').append('<p>Your message has been sent successfully. Thank you for contacting me.</p>');
+				})
+				.catch(error => {
+					$('#contact-form > .row').remove();
+			      	$('#contact-form').append('<p>An error has occured while trying to process your message. Please reload the page and try again.</p>');
+				});
 		}); //End .submit
 	}); // End document.ready
 })(jQuery);
